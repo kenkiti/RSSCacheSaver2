@@ -27,30 +27,11 @@ namespace RSSCacheSaver2
         private long _count = 0;
         private string _name = "";
 
-        class Options
-        {
-            // 起動時に読み込む銘柄コード
-            [CommandLine.Option('c')]
-            public string Code { get; set; }
 
-            // 自動開始
-            [CommandLine.Option('a')]
-            public bool AutoStart { get; set; }
-        }
         private void Form1_Load(object sender, EventArgs e)
         {
-            _item = new Dictionary<string, string>()
-            {
-                { "最良売気配値１", ""},
-                { "最良買気配値１", ""},
-                { "現在値", ""},
-                { "出来高", ""},
-                { "出来高加重平均", ""},
-            };
-
-
             txtCode.Text = "4565";
-            Parse_Options();
+            Options();
             if (opts.Code != "") { txtCode.Text = opts.Code; }
         }
 
@@ -112,8 +93,8 @@ namespace RSSCacheSaver2
                                     kind = "G";
                                 }
 
-                                cmd.CommandText = $"insert into tick (Time,Tick,Kind,Price) values (" +
-                                    $"'{now}','{tick}','{kind}','{price}')";
+                                cmd.CommandText = $"insert into tick (Time,Tick,Kind,Vwap,Price) values (" +
+                                    $"'{now}','{tick}','{kind}','{_item["出来高加重平均"]}','{price}')";
                                 cmd.ExecuteNonQuery();
                             }
                             break;
@@ -142,7 +123,7 @@ namespace RSSCacheSaver2
         /// <param name="code"></param>
         private void CreateDatabase(string code)
         {
-            string path = $"R2_{code}_{DateTime.Now.ToString("yyyyMMdd")}.db"; ;
+            string path = $"{DateTime.Now.ToString("yyyyMMdd")}_RSS_{code}.db"; ;
             connection = new SQLiteConnection("Data Source=" + path);
             System.Diagnostics.Debug.WriteLine($"{path}");
 
@@ -163,6 +144,7 @@ namespace RSSCacheSaver2
                         "Time TEXT NOT NULL," +
                         "Tick INTEGER NOT NULL," +
                         "Kind TEXT NOT NULL," + // Yellow, Red, Green
+                        "Vwap REAL NOT NULL," + 
                         "Price REAL NOT NULL);";
                     cmd.ExecuteNonQuery();
                 }
@@ -230,7 +212,7 @@ namespace RSSCacheSaver2
         /// <summary>
         /// コマンドライン引数を解析する
         /// </summary>
-        public void Parse_Options()
+        public void Options()
         {
             string[] i_args = System.Environment.GetCommandLineArgs();
             var result = CommandLine.Parser.Default.ParseArguments<Options>(i_args) as CommandLine.Parsed<Options>;
