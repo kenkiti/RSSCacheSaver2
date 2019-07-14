@@ -30,9 +30,10 @@ namespace RSSCacheSaver2
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            txtCode.Text = "4565";
+            txtCode.Text = "3697";
+            lblCount.Text = "";
             Options();
-            if (opts.Code != "") { txtCode.Text = opts.Code; }
+            if (opts.Code != "" && opts.Code != null) { txtCode.Text = opts.Code; }
         }
 
         /// <summary>
@@ -93,8 +94,8 @@ namespace RSSCacheSaver2
                                     kind = "G";
                                 }
 
-                                cmd.CommandText = $"insert into tick (Time,Tick,Kind,Vwap,Price) values (" +
-                                    $"'{now}','{tick}','{kind}','{_item["出来高加重平均"]}','{price}')";
+                                cmd.CommandText = $"insert into tick (Time,Tick,Kind,Vwap,Bid,Ask,Price) values (" +
+                                    $"'{now}','{tick}','{kind}','{_item["出来高加重平均"]}','{bid}','{ask}','{price}')";
                                 cmd.ExecuteNonQuery();
                             }
                             break;
@@ -144,7 +145,9 @@ namespace RSSCacheSaver2
                         "Time TEXT NOT NULL," +
                         "Tick INTEGER NOT NULL," +
                         "Kind TEXT NOT NULL," + // Yellow, Red, Green
-                        "Vwap REAL NOT NULL," + 
+                        "Vwap REAL NOT NULL," +
+                        "Bid REAL NOT NULL," +
+                        "Ask REAL NOT NULL," +
                         "Price REAL NOT NULL);";
                     cmd.ExecuteNonQuery();
                 }
@@ -188,6 +191,8 @@ namespace RSSCacheSaver2
             {
                 { "最良売気配値１", ""},
                 { "最良買気配値１", ""},
+                { "最良買気配数量１", ""},
+                { "最良売気配数量１", ""},
                 { "現在値", ""},
                 { "出来高", ""},
                 { "出来高加重平均", ""},
