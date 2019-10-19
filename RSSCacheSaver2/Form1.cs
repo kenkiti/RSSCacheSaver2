@@ -17,16 +17,45 @@ namespace RSSCacheSaver2
         }
 
         private Dictionary<string, string> _item;
-        private SQLiteConnection connection;
+        private SQLiteConnection _connection;
         private DdeClient client;
+
         private long prevVolume = 0;
+        private double preBid = 0;
+        private double preAsk = 0;
         private long tick = 0;
 
         // 起動オプション
         private Options opts = new Options();
-        private long _count = 0;
+        private long _count = 0; // 秒間リクエストの計測
         private string _name = "";
 
+        internal class CurrentTimeGetter
+        {
+            private static int lastTicks = -1;
+            private static DateTime lastDateTime = DateTime.MinValue;
+
+            /// <summary>        
+            /// Gets the current time in an optimized fashion.        
+            /// </summary>        
+            /// <value>Current time.</value>        
+
+            public static DateTime Now
+            {
+                get
+                {
+                    int tickCount = Environment.TickCount;
+                    if (tickCount == lastTicks)
+                    {
+                        return lastDateTime;
+                    }
+                    DateTime dt = DateTime.Now;
+                    lastTicks = tickCount;
+                    lastDateTime = dt;
+                    return dt;
+                }
+            }
+        }
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -46,9 +75,10 @@ namespace RSSCacheSaver2
 
             if (_item.TryGetValue(args.Item, out string value))
             {
-                using (SQLiteCommand cmd = connection.CreateCommand())
+                using (SQLiteCommand cmd = _connection.CreateCommand())
                 {
-                    string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                    //string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                    string now = CurrentTimeGetter.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     cmd.CommandText =
                         $"insert into rss(Time,Item,Value) values ('{now}','{args.Item}','{raw}')";
                     cmd.ExecuteNonQuery();
@@ -85,7 +115,7 @@ namespace RSSCacheSaver2
                                 }
 
                                 string kind = "";
-                                if (bid - price < price - ask)
+                                if (preBid - price < price - preAsk)
                                 {
                                     kind = "R";
                                 }
@@ -93,14 +123,16 @@ namespace RSSCacheSaver2
                                 {
                                     kind = "G";
                                 }
+                                preBid = bid;
+                                preAsk = ask;
 
-                                cmd.CommandText = $"insert into tick (Time,Tick,Kind,Vwap,Bid,Ask,Price) values (" +
-                                    $"'{now}','{tick}','{kind}','{_item["出来高加重平均"]}','{bid}','{ask}','{price}')";
+                                var t = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+                                cmd.CommandText = $"insert into tick (No, Time,Tick,Kind,Vwap,Bid,Ask,Price) values (" +
+                                    $"'{t}','{now}','{tick}','{kind}','{v}','{bid}','{ask}','{price}')";
                                 cmd.ExecuteNonQuery();
                             }
                             break;
                     }
-
 
 
                     _count += 1;
@@ -113,7 +145,7 @@ namespace RSSCacheSaver2
         /// </summary>
         private void OnDisconnected(object sender, DdeDisconnectedEventArgs args)
         {
-            connection.Close();
+            _connection.Close();
             Console.WriteLine("OnDisconnected: " + args.IsServerInitiated.ToString() + " " +
                 "" + args.IsDisposed.ToString());
         }
@@ -124,8 +156,9 @@ namespace RSSCacheSaver2
         /// <param name="code"></param>
         private void CreateDatabase(string code)
         {
+            //TODO
+
             string path = $"{DateTime.Now.ToString("yyyyMMdd")}_RSS_{code}.db"; ;
-            connection = new SQLiteConnection("Data Source=" + path);
             System.Diagnostics.Debug.WriteLine($"{path}");
 
             using (SQLiteConnection connection = new SQLiteConnection("Data Source=" + path))
@@ -152,8 +185,28 @@ namespace RSSCacheSaver2
                     cmd.ExecuteNonQuery();
                 }
             }
+
+            //_connection = new SQLiteConnection("Data Source=" + path);
+            CreateConnection(path);
         }
 
+        /// <summary>
+        /// 2019.10.19
+        /// SQLite3 へのコネクションを開く。同期オフ、ジャーナルモードWAL 
+        /// </summary>
+        /// <param name="path"></param>
+        private void CreateConnection(string path)
+        {
+            var builder = new SQLiteConnectionStringBuilder()
+            {
+                DataSource = path,
+                Version = 3,
+                LegacyFormat = false,
+                SyncMode = SynchronizationModes.Off,
+                JournalMode = SQLiteJournalModeEnum.Wal
+            };
+            _connection = new SQLiteConnection(builder.ToString());
+        }
 
         /// <summary>
         /// 自動終了処理
@@ -189,13 +242,56 @@ namespace RSSCacheSaver2
         {
             _item = new Dictionary<string, string>()
             {
-                { "最良売気配値１", ""},
-                { "最良買気配値１", ""},
-                { "最良買気配数量１", ""},
-                { "最良売気配数量１", ""},
+                //{ "最良売気配値１", ""},
+                //{ "最良買気配値１", ""},
+                //{ "最良買気配数量１", ""},
+                //{ "最良売気配数量１", ""},
                 { "現在値", ""},
                 { "出来高", ""},
                 { "出来高加重平均", ""},
+
+                {"最良売気配値１" ,""},
+                {"最良売気配値２" ,""},
+                {"最良売気配値３" ,""},
+                {"最良売気配値４" ,""},
+                {"最良売気配値５" ,""},
+                {"最良売気配値６" ,""},
+                {"最良売気配値７" ,""},
+                {"最良売気配値８" ,""},
+                {"最良売気配値９" ,""},
+                {"最良売気配値１０" ,""},
+                {"最良買気配値１" ,""},
+                {"最良買気配値２" ,""},
+                {"最良買気配値３" ,""},
+                {"最良買気配値４" ,""},
+                {"最良買気配値５" ,""},
+                {"最良買気配値６" ,""},
+                {"最良買気配値７" ,""},
+                {"最良買気配値８" ,""},
+                {"最良買気配値９" ,""},
+                {"最良買気配値１０" ,""},
+                {"最良売気配数量１" ,""},
+                {"最良売気配数量２" ,""},
+                {"最良売気配数量３" ,""},
+                {"最良売気配数量４" ,""},
+                {"最良売気配数量５" ,""},
+                {"最良売気配数量６" ,""},
+                {"最良売気配数量７" ,""},
+                {"最良売気配数量８" ,""},
+                {"最良売気配数量９" ,""},
+                {"最良売気配数量１０" ,""},
+                {"最良買気配数量１" ,""},
+                {"最良買気配数量２" ,""},
+                {"最良買気配数量３" ,""},
+                {"最良買気配数量４" ,""},
+                {"最良買気配数量５" ,""},
+                {"最良買気配数量６" ,""},
+                {"最良買気配数量７" ,""},
+                {"最良買気配数量８" ,""},
+                {"最良買気配数量９" ,""},
+                {"最良買気配数量１０" ,""},
+                {"OVER気配数量" ,""},
+                {"UNDER気配数量" ,""},
             };
 
             // DB作成
@@ -211,7 +307,7 @@ namespace RSSCacheSaver2
                 _count += 1;
             }
             client.Advise += new EventHandler<DdeAdviseEventArgs>(OnAdvise);
-            connection.Open();
+            _connection.Open();
         }
 
         /// <summary>
@@ -226,6 +322,7 @@ namespace RSSCacheSaver2
             {
                 opts.Code = result.Value.Code;
                 opts.AutoStart = result.Value.AutoStart;
+                opts.Debug = result.Value.Debug;
 
                 //解析に成功した時は、解析結果を表示
                 Console.WriteLine(string.Format("code: {0}\r\nstart: {1}\r\n",
@@ -246,7 +343,10 @@ namespace RSSCacheSaver2
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            IsRestTime();
+            Console.WriteLine(opts.Debug);
+            if (!opts.Debug)
+                IsRestTime();
+
             lblCount.Text = $"({_count}/秒)";
             _count = 0;
         }
@@ -257,6 +357,7 @@ namespace RSSCacheSaver2
             btnStart.Enabled = true;
             btnStop.Enabled = false;
             timer1.Enabled = false;
+            _connection.Close();
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -276,7 +377,7 @@ namespace RSSCacheSaver2
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
-            connection.Close();
+            _connection.Close();
         }
 
         private void Form1_Shown(object sender, EventArgs e)
