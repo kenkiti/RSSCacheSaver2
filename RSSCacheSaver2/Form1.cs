@@ -77,8 +77,8 @@ namespace RSSCacheSaver2
             {
                 using (SQLiteCommand cmd = _connection.CreateCommand())
                 {
-                    //string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                    string now = CurrentTimeGetter.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                    //string now = CurrentTimeGetter.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     cmd.CommandText =
                         $"insert into rss(Time,Item,Value) values ('{now}','{args.Item}','{raw}')";
                     cmd.ExecuteNonQuery();
@@ -127,13 +127,14 @@ namespace RSSCacheSaver2
                                 preAsk = ask;
 
                                 var t = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-                                cmd.CommandText = $"insert into tick (No, Time,Tick,Kind,Vwap,Bid,Ask,Price) values (" +
-                                    $"'{t}','{now}','{tick}','{kind}','{v}','{bid}','{ask}','{price}')";
+                                //cmd.CommandText = $"insert into tick (No, Time,Tick,Kind,Vwap,Bid,Ask,Price) values (" +
+                                //    $"'{t}','{now}','{tick}','{kind}','{v}','{bid}','{ask}','{price}')";
+                                cmd.CommandText = $"insert into tick (Time,Tick,Kind,Vwap,Bid,Ask,Price) values (" +
+                                    $"'{now}','{tick}','{kind}','{v}','{bid}','{ask}','{price}')";
                                 cmd.ExecuteNonQuery();
                             }
                             break;
                     }
-
 
                     _count += 1;
                 }
@@ -202,7 +203,7 @@ namespace RSSCacheSaver2
                 DataSource = path,
                 Version = 3,
                 LegacyFormat = false,
-                SyncMode = SynchronizationModes.Off,
+                SyncMode = SynchronizationModes.Normal, // off は途中で落ちる
                 JournalMode = SQLiteJournalModeEnum.Wal
             };
             _connection = new SQLiteConnection(builder.ToString());
